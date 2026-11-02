@@ -19,3 +19,9 @@ Tampermonkey scripts for the team.
 4. Days that already have a timesheet or leave are greyed out and skipped. Click **Fill** to submit the rest one by one.
 
 Every day gets a 30 min meal break and the comment "n/a". Future dates are ignored.
+
+Dates are matched in your browser's timezone, so it must be the same as your Deputy location's.
+
+## Contributing
+
+Bump `@version` in a script's header on every change.
