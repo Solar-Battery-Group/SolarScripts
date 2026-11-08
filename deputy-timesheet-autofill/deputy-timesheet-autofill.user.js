@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SolarScripts – Deputy Timesheet Autofill
 // @namespace    solarscripts
-// @version      0.1.1
+// @version      0.2.0
 // @description  Fill missing weekday timesheets from the Deputy profile sidebar
 // @match        https://*.deputy.com/*
 // @updateURL    https://raw.githubusercontent.com/Solar-Battery-Group/SolarScripts/main/deputy-timesheet-autofill/deputy-timesheet-autofill.user.js
@@ -45,11 +45,6 @@
   const pad = (value) => String(value).padStart(2, '0');
 
   const formatDateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-
-  const parseDateKey = (key) => {
-    const [year, month, day] = key.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
 
   const formatIsoWithOffset = (date, time) => {
     const offset = -date.getTimezoneOffset();
@@ -152,6 +147,7 @@
   };
 
   const createPanel = () => {
+    const $ = unsafeWindow.jQuery;
     const settings = getSettings();
     const today = new Date();
     const monday = new Date(today);
@@ -165,8 +161,8 @@
       <div style="display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center;">
         <label>Start time</label><input type="time" data-field="start" class="form-control" value="${settings.start}">
         <label>End time</label><input type="time" data-field="end" class="form-control" value="${settings.end}">
-        <label>From</label><input type="date" data-field="from" class="form-control" value="${formatDateKey(monday)}">
-        <label>To</label><input type="date" data-field="to" class="form-control" value="${formatDateKey(today)}">
+        <label>From</label><input type="text" data-field="from" class="form-control" readonly>
+        <label>To</label><input type="text" data-field="to" class="form-control" readonly>
       </div>
       <p style="margin: 8px 0 0; color: #777;">Weekdays only, ${BREAK_MINUTES} min meal break, comment "${COMMENT}".</p>
       <ul data-field="days" style="margin: 8px 0; padding-left: 18px;"></ul>
@@ -182,14 +178,10 @@
 
     const refreshDays = async () => {
       getField('fill').disabled = true;
-      if (!getField('from').value || !getField('to').value) {
-        setStatus('Pick a date range');
-        return;
-      }
+      const from = $(getField('from')).datepicker('getDate');
+      const to = $(getField('to')).datepicker('getDate');
 
       setStatus('Checking existing timesheets…');
-      const from = parseDateKey(getField('from').value);
-      const to = parseDateKey(getField('to').value);
       const timesheetKindsByDate = await fetchTimesheetKindsByDate(from, to);
       const days = getWeekdays(from, to);
       missingDays = days.filter((day) => !timesheetKindsByDate.has(formatDateKey(day)));
@@ -210,8 +202,17 @@
 
     getField('start').addEventListener('change', () => saveSetting('start', getField('start').value));
     getField('end').addEventListener('change', () => saveSetting('end', getField('end').value));
-    getField('from').addEventListener('change', refreshDaysSafely);
-    getField('to').addEventListener('change', refreshDaysSafely);
+
+    const fromInput = $(getField('from'));
+    const toInput = $(getField('to'));
+    const handleDateSelect = () => {
+      fromInput.datepicker('option', 'maxDate', toInput.datepicker('getDate'));
+      toInput.datepicker('option', 'minDate', fromInput.datepicker('getDate'));
+      refreshDaysSafely();
+    };
+
+    fromInput.datepicker({ dateFormat: 'D dd/mm/y', maxDate: today, onSelect: handleDateSelect }).datepicker('setDate', monday);
+    toInput.datepicker({ dateFormat: 'D dd/mm/y', minDate: monday, maxDate: today, onSelect: handleDateSelect }).datepicker('setDate', today);
 
     getField('fill').addEventListener('click', async () => {
       if (isFilling) return;
@@ -239,7 +240,7 @@
     if (document.querySelector(`[${PANEL_ATTR}]`)) return;
 
     const addButton = findAddTimesheetButton();
-    if (!addButton) return;
+    if (!addButton || !unsafeWindow.jQuery?.fn.datepicker) return;
 
     const { panel, refreshDaysSafely } = createPanel();
     const toggle = document.createElement('a');
