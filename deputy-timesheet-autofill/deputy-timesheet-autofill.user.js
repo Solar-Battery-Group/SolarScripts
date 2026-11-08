@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         SolarScripts – Deputy Timesheet Autofill
 // @namespace    solarscripts
-// @version      0.1.0
+// @version      0.1.1
 // @description  Fill missing weekday timesheets from the Deputy profile sidebar
 // @match        https://*.deputy.com/*
-// @updateURL    https://raw.githubusercontent.com/Solar-Battery-Group/SolarScripts/main/deputy-timesheet-autofill.user.js
-// @downloadURL  https://raw.githubusercontent.com/Solar-Battery-Group/SolarScripts/main/deputy-timesheet-autofill.user.js
+// @updateURL    https://raw.githubusercontent.com/Solar-Battery-Group/SolarScripts/main/deputy-timesheet-autofill/deputy-timesheet-autofill.user.js
+// @downloadURL  https://raw.githubusercontent.com/Solar-Battery-Group/SolarScripts/main/deputy-timesheet-autofill/deputy-timesheet-autofill.user.js
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
