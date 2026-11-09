@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SolarScripts – Deputy Timesheet Autofill
 // @namespace    solarscripts
-// @version      0.2.0
+// @version      0.2.1
 // @description  Fill missing weekday timesheets from the Deputy profile sidebar
 // @match        https://*.deputy.com/*
 // @updateURL    https://raw.githubusercontent.com/Solar-Battery-Group/SolarScripts/main/deputy-timesheet-autofill/deputy-timesheet-autofill.user.js
@@ -101,39 +101,36 @@
   const findAddTimesheetButton = () =>
     [...document.querySelectorAll('a.btnCreate')].find((link) => getSectionHeading(link) === 'Recent time sheets');
 
-  const findVisible = (selector) => {
-    const element = document.querySelector(selector);
-    return element?.offsetParent ? element : null;
-  };
+  // Submitted forms stay in the DOM, so form ids repeat.
+  const findDateInputs = () => [...document.querySelectorAll('#timesheet-date')];
 
   const findByText = (container, selector, text) =>
     [...container.querySelectorAll(selector)].find((element) => element.textContent.trim() === text);
-
-  const closeOpenForm = () => {
-    const form = findVisible('#timesheet-date')?.closest('.card');
-    if (form) findByText(form, 'button, a', 'Cancel')?.click();
-  };
 
   const fillDay = async (date, settings) => {
     const $ = unsafeWindow.jQuery;
     const key = formatDateKey(date);
 
+    const previousDateInputs = findDateInputs();
     (await waitFor(findAddTimesheetButton, 'the Add new button')).click();
-    const dateInput = await waitFor(() => findVisible('#timesheet-date'), 'the timesheet form');
+    const dateInput = await waitFor(
+      () => findDateInputs().find((input) => !previousDateInputs.includes(input) && input.offsetParent),
+      'the new timesheet form',
+    );
     const form = dateInput.closest('.card');
 
     try {
       $(dateInput).datepicker('setDate', date).trigger('change');
       if (formatDateKey($(dateInput).datepicker('getDate')) !== key) throw new Error(`Deputy refused the date ${key}`);
 
-      $('#timesheet-start').val(formatTime12h(settings.start)).trigger('change').trigger('blur');
-      $('#timesheet-end').val(formatTime12h(settings.end)).trigger('change').trigger('blur');
+      $(form.querySelector('#timesheet-start')).val(formatTime12h(settings.start)).trigger('change').trigger('blur');
+      $(form.querySelector('#timesheet-end')).val(formatTime12h(settings.end)).trigger('change').trigger('blur');
 
       (await waitFor(() => findByText(form, 'a', 'Add Break'), 'the Add Break button')).click();
       const breakLength = await waitFor(() => form.querySelector('.js-break-length'), 'the break row');
       $(breakLength).val(BREAK_MINUTES).trigger('change');
 
-      $('#timesheet-comment').val(COMMENT).trigger('input').trigger('change');
+      $(form.querySelector('#timesheet-comment')).val(COMMENT).trigger('input').trigger('change');
       form.querySelector('.btnSubmit').click();
 
       await waitFor(
@@ -142,7 +139,7 @@
         20000,
       );
     } finally {
-      closeOpenForm();
+      findByText(form, 'button, a', 'Cancel')?.click();
     }
   };
 
